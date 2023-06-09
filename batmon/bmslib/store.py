@@ -1,4 +1,5 @@
 import json
+import os.path
 import re
 from os import R_OK, access
 from os.path import isfile, join
@@ -9,19 +10,30 @@ from batmon.bmslib.util import dotdict, get_logger
 
 logger = get_logger()
 
-
-def is_readable(file):
-    return isfile(file) and access(file, R_OK)
-
-
-root_dir = "/data/" if is_readable("/data/options.json") else ""
-bms_meter_states = root_dir + "bms_meter_states.json"
 lock = Lock()
 
+BMS_METER_STATES_FILENAME = "bms_meter_states.json"
 
-def store_file(fn):
-    return root_dir + fn
+root_dir: Optional[str] = None
+bms_meter_states: Optional[str] = None
 
+def set_data_dir(path: str):
+    global root_dir
+    global bms_meter_states
+
+    if not os.path.isdir(path):
+        raise Exception(f"Path supplied is not a directory: {path}")
+    if not os.access(path, os.W_OK):
+        raise Exception(f"Supplied directory is not writable: {path}")
+
+    with lock:
+        root_dir = path
+        bms_meter_states = os.path.join(root_dir, BMS_METER_STATES_FILENAME)
+
+def store_file(filename: str) -> str:
+    if root_dir is None:
+        raise Exception("store has not been initialized")
+    return os.path.join(root_dir, filename)
 
 def load_meter_states():
     with lock:

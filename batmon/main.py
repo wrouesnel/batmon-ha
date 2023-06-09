@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import atexit
+import pathlib
 import random
 import signal
 import sys
@@ -111,13 +112,14 @@ async def main(user_config):
         except Exception as e:
             logger.warning("Error power cycling BT: %s", e)
 
-    try:
-        if len(sys.argv) > 1 and sys.argv[1] == "skip-discovery":
-            raise Exception("skip-discovery")
-        devices = await batmon.bmslib.bt.bt_discovery(logger)
-    except Exception as e:
-        devices = []
-        logger.error("Error discovering devices: %s", e)
+    if not user_config.get("skip-discovery", False):
+        try:
+            devices = await batmon.bmslib.bt.bt_discovery(logger)
+        except Exception as e:
+            devices = []
+            logger.error("Error discovering devices: %s", e)
+    else:
+        logger.info("Skipping discovery phase on user request")
 
     def name2addr(name: str):
         return next(
@@ -237,7 +239,7 @@ async def main(user_config):
     if not user_config.mqtt_broker:
         mqtt_util.disable_warnings()
 
-    from bmslib.store import load_meter_states
+    from batmon.bmslib.store import load_meter_states
 
     try:
         meter_states = load_meter_states()
@@ -375,7 +377,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument("--config-file", type=str, help="Load config file")
-
+parser.add_argument("--data-dir", type=str, default="/data" if os.path.exists("/data") else str(pathlib.Path.home()), help="Data directory")
 
 def cli(argv: Optional[Sequence[str]] = None):
     """Entrypoint for command line executions"""
