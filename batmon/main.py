@@ -377,13 +377,14 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument("--config-file", type=str, help="Load config file")
-parser.add_argument("--data-dir", type=str, default="/data" if os.path.exists("/data") else str(pathlib.Path.home()), help="Data directory")
+parser.add_argument("--data-dir", type=str, default="/data" if pathlib.Path("/data").exists() else str(pathlib.Path.home()), help="Data directory")
 
 def cli(argv: Optional[Sequence[str]] = None):
     """Entrypoint for command line executions"""
     args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     user_config = load_user_config(args.config_file)
+    batmon.bmslib.store.set_data_dir(args.data_dir)
 
     atexit.register(on_exit)
     # noinspection PyTypeChecker

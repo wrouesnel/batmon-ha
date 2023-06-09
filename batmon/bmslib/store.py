@@ -49,9 +49,9 @@ def store_meter_states(meter_states):
 
 
 def store_algorithm_state(bms_name, algorithm_name, state=None):
-    fn = root_dir + "bat_state_" + re.sub(r"[^\w_. -]", "_", bms_name) + ".json"
+    basename = "bat_state_" + re.sub(r"[^\w_. -]", "_", bms_name)
     with lock:
-        with open(fn, "a+") as f:
+        with open(store_file(f"{basename}.json"), "a+") as f:
             try:
                 f.seek(0)
                 bms_state = json.load(f)
