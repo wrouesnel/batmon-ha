@@ -124,7 +124,7 @@ class JKDummy():
                               response: bool = False, ):
         crc = data[-1]
         data = bytes(data[:-1])
-        from bmslib.jikong import calc_crc
+        from batmon.bmslib.jikong import calc_crc
         assert calc_crc(data) == crc
 
         if data.startswith(b'\xaaU\x90\xeb\x97'):

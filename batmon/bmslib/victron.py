@@ -7,8 +7,8 @@ import math
 from functools import partial
 from typing import Optional
 
-from bmslib.bms import BmsSample
-from bmslib.bt import BtBms
+from batmon.bmslib.bms import BmsSample
+from batmon.bmslib.bt import BtBms
 
 
 VICTRON_CHARACTERISTICS = {

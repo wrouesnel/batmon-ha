@@ -65,7 +65,7 @@ class BtBms():
         self._connect_time = 0
 
         if address.startswith('test_'):
-            from bmslib.dummy import BleakDummyClient
+            from batmon.bmslib.dummy import BleakDummyClient
             self.client = BleakDummyClient(address, disconnected_callback=self._on_disconnect)
         else:
             kwargs = {}

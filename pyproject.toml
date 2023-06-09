@@ -2,11 +2,14 @@
 name = "batmon-ha"
 version = "0.0.61"
 description = "Monitor and control various battery management systems over Bluetooth"
-authors = ["Fabian <gh@fabi.me", "Will Rouesnel <wrouesnel@wrouesnel.com>"]
+authors = ["Fabian <gh@fabi.me>", "Will Rouesnel <wrouesnel@wrouesnel.com>"]
 readme = "README.md"
+packages = [
+    { include = "batmon", from = "." },
+]
 
 [tool.poetry.scripts]
-batmon = "main:cli"
+batmon = "batmon.main:cli"
 
 [tool.poetry.dependencies]
 python = "^3.9"

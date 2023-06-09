@@ -5,7 +5,7 @@ from os.path import isfile, join
 from threading import Lock
 from typing import Sequence, Optional
 
-from bmslib.util import dotdict, get_logger
+from batmon.bmslib.util import dotdict, get_logger
 
 logger = get_logger()
 

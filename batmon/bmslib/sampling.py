@@ -6,13 +6,13 @@ from typing import Optional
 
 import paho.mqtt.client
 
-import bmslib.bt
-from bmslib.algorithm import create_algorithm, BatterySwitches
-from bmslib.bms import DeviceInfo
-from bmslib.group import BmsGroup, GroupNotReady
-from bmslib.pwmath import Integrator, DiffAbsSum
-from bmslib.util import get_logger
-from mqtt_util import publish_sample, publish_cell_voltages, publish_temperatures, publish_hass_discovery, \
+import batmon.bmslib.bt
+from batmon.bmslib.algorithm import create_algorithm, BatterySwitches
+from batmon.bmslib.bms import DeviceInfo
+from batmon.bmslib.group import BmsGroup, GroupNotReady
+from batmon.bmslib.pwmath import Integrator, DiffAbsSum
+from batmon.bmslib.util import get_logger
+from batmon.mqtt_util import publish_sample, publish_cell_voltages, publish_temperatures, publish_hass_discovery, \
     subscribe_switches, mqtt_single_out, round_to_n
 
 logger = get_logger(verbose=False)
@@ -20,7 +20,7 @@ logger = get_logger(verbose=False)
 
 class BmsSampler():
 
-    def __init__(self, bms: bmslib.bt.BtBms, mqtt_client: paho.mqtt.client.Client, dt_max_seconds, expire_after_seconds,
+    def __init__(self, bms: batmon.bmslib.bt.BtBms, mqtt_client: paho.mqtt.client.Client, dt_max_seconds, expire_after_seconds,
                  invert_current=False, meter_state=None, publish_period=None, algorithms: Optional[list] = None,
                  current_correction_factor = 1.0,
                  bms_group: Optional[BmsGroup] = None):
@@ -73,7 +73,7 @@ class BmsSampler():
                 logger.info("%s bms debug data: %s", self.bms.name, dd)
             if self.device_info:
                 logger.info('%s device info: %s', self.device_info)
-            logger.info('Bleak version %s', bmslib.bt.bleak_version())
+            logger.info('Bleak version %s', batmon.bmslib.bt.bleak_version())
             raise
 
     async def sample(self):
@@ -129,7 +129,7 @@ class BmsSampler():
                                     BatterySwitches(**sample.switches), res)
 
                     if res:
-                        from bmslib.store import store_algorithm_state
+                        from batmon.bmslib.store import store_algorithm_state
                         state = self.algorithm.state
                         if state:
                             store_algorithm_state(bms.name, algorithm_name=self.algorithm.name, state=state.__dict__)

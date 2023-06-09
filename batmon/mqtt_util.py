@@ -7,9 +7,9 @@ import traceback
 
 import paho.mqtt.client as paho
 
-from bmslib.bms import BmsSample, DeviceInfo, MIN_VALUE_EXPIRY
-from bmslib.bt import BtBms
-from bmslib.util import get_logger
+from batmon.bmslib.bms import BmsSample, DeviceInfo, MIN_VALUE_EXPIRY
+from batmon.bmslib.bt import BtBms
+from batmon.bmslib.util import get_logger
 
 logger = get_logger()
 

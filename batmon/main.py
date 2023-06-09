@@ -6,27 +6,22 @@ import sys
 import time
 import traceback
 import argparse
-from typing import List, Dict
+from typing import List, Dict, Optional, Sequence
 
 import paho.mqtt.client as paho
 
-import bmslib.bt
-import bmslib.daly
-import bmslib.dummy
-import bmslib.jbd
-import bmslib.jikong
-import bmslib.victron
-import mqtt_util
-from bmslib.bms import MIN_VALUE_EXPIRY
-from bmslib.group import VirtualGroupBms, BmsGroup
-from bmslib.sampling import BmsSampler
-from bmslib.store import load_user_config
-from bmslib.util import get_logger
-from mqtt_util import mqqt_last_publish_time, mqtt_message_handler, mqtt_process_action_queue
+from batmon import bmslib
+from batmon.bmslib.bms import MIN_VALUE_EXPIRY
+from batmon.bmslib.group import VirtualGroupBms, BmsGroup
+from batmon.bmslib.sampling import BmsSampler
+from batmon.bmslib.store import load_user_config
+from batmon.bmslib.util import get_logger
+
+from batmon import mqtt_util
+from batmon.mqtt_util import mqqt_last_publish_time, mqtt_message_handler, mqtt_process_action_queue
 
 logger = get_logger(verbose=False)
 shutdown = False
-
 
 async def fetch_loop(fn, period, max_errors):
     num_errors_row = 0
@@ -305,9 +300,9 @@ parser = argparse.ArgumentParser("batmon", description="Monitor various types of
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--config-file", type=str, help="Load config file")
 
-def cli(argv):
+def cli(argv: Optional[Sequence[str]] = None):
     """Entrypoint for command line executions"""
-    args = parser.parse_args(argv)
+    args = parser.parse_args(argv if argv is not None else sys.argv[1:])
 
     user_config = load_user_config(args.config_file)
 
@@ -323,9 +318,7 @@ def cli(argv):
         logger.error("Main loop exception: %s", e)
         logger.error("Stack: %s", traceback.format_exc())
 
-    sys.exit(1)
+    return 1
 
 if __name__ == "__main__":
-    cli(sys.argv[1:])
-
-
+    sys.exit(cli(sys.argv[1:]))

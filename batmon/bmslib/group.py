@@ -4,10 +4,9 @@ import time
 from copy import copy
 from typing import Dict, Iterable, List
 
-from bmslib.bms import BmsSample
-from bmslib.bt import BtBms
-from bmslib.util import get_logger
-
+from batmon.bmslib.bms import BmsSample
+from batmon.bmslib.bt import BtBms
+from batmon.bmslib.util import get_logger
 
 class BmsGroup:
 

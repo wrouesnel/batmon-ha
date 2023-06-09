@@ -1,8 +1,8 @@
 import time
 from typing import Optional, Union
 
-from bmslib.bms import BmsSample
-from bmslib.util import get_logger, dict_to_short_string
+from batmon.bmslib.bms import BmsSample
+from batmon.bmslib.util import get_logger, dict_to_short_string
 
 logger = get_logger()
 
@@ -116,7 +116,7 @@ def create_algorithm(repr: Union[dict, str], bms_name=None) -> BaseAlgorithm:
         name = repr.pop(0)
         args = repr
 
-    from bmslib.store import store_algorithm_state
+    from batmon.bmslib.store import store_algorithm_state
     state = store_algorithm_state(bms_name, algorithm_name=name)
     algo = classes[name](
         name=name,
