@@ -1,0 +1,15 @@
+#!/bin/bash
+# Activate the projects virtualenv. This file should be sourced.
+# Prints an error message if the user hasn't autogen'd.
+
+source include.sh
+
+if [ ! -d .venv ]; then
+    fatal 1 ".venv directory not setup. Please run ./autogen.sh"
+fi
+
+if [ ! -e .venv/bin/activate ]; then
+    fatal 1 "missing .venv/bin/activate. Please delete venv/ and re-run ./autogen.sh"
+fi
+
+source .venv/bin/activate

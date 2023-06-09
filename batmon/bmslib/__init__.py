@@ -1,9 +1,10 @@
+from . import *
+
 import asyncio
 from typing import Dict, Union, Tuple
 
 # NameType = Union[str, Tuple[str]]
 NameType = Union[str, int, Tuple[Union[str, int]]]
-
 
 class FuturesPool:
     """
