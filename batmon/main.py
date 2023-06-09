@@ -10,7 +10,17 @@ from typing import Dict, List, Optional, Sequence
 
 import paho.mqtt.client as paho
 
-from batmon import bmslib, mqtt_util
+from batmon import mqtt_util
+
+import batmon.bmslib.bt
+import batmon.bmslib.store
+import batmon.bmslib.daly
+import batmon.bmslib.jbd
+import batmon.bmslib.jikong
+import batmon.bmslib.victron
+import batmon.bmslib.group
+import batmon.bmslib.dummy
+
 from batmon.bmslib.bms import MIN_VALUE_EXPIRY
 from batmon.bmslib.group import BmsGroup, VirtualGroupBms
 from batmon.bmslib.sampling import BmsSampler
@@ -43,7 +53,7 @@ async def fetch_loop(fn, period, max_errors):
 
 def store_states(samplers: List[BmsSampler]):
     meter_states = {s.bms.name: s.get_meter_state() for s in samplers}
-    from bmslib.store import store_meter_states
+    from batmon.bmslib.store import store_meter_states
 
     store_meter_states(meter_states)
 
@@ -88,15 +98,15 @@ async def background_loop(timeout: float, sampler_list: List[BmsSampler]):
 
 
 async def main(user_config):
-    bms_list: List[bmslib.bt.BtBms] = []
+    bms_list: List[batmon.bmslib.bt.BtBms] = []
     extra_tasks = []
 
     if user_config.get("bt_power_cycle"):
         try:
             logger.info("Power cycle bluetooth hardware")
-            bmslib.bt.bt_power(False)
+            batmon.bmslib.bt.bt_power(False)
             await asyncio.sleep(1)
-            bmslib.bt.bt_power(True)
+            batmon.bmslib.bt.bt_power(True)
             await asyncio.sleep(2)
         except Exception as e:
             logger.warning("Error power cycling BT: %s", e)
@@ -104,7 +114,7 @@ async def main(user_config):
     try:
         if len(sys.argv) > 1 and sys.argv[1] == "skip-discovery":
             raise Exception("skip-discovery")
-        devices = await bmslib.bt.bt_discovery(logger)
+        devices = await batmon.bmslib.bt.bt_discovery(logger)
     except Exception as e:
         devices = []
         logger.error("Error discovering devices: %s", e)
@@ -126,18 +136,18 @@ async def main(user_config):
 
     logger.info(
         "Bleak version %s, BtBackend version %s",
-        bmslib.bt.bleak_version(),
-        bmslib.bt.bt_stack_version(),
+        batmon.bmslib.bt.bleak_version(),
+        batmon.bmslib.bt.bt_stack_version(),
     )
 
     bms_registry = dict(
-        daly=bmslib.daly.DalyBt,
-        jbd=bmslib.jbd.JbdBt,
-        jk=bmslib.jikong.JKBt,
-        victron=bmslib.victron.SmartShuntBt,
-        group_parallel=bmslib.group.VirtualGroupBms,
+        daly=batmon.bmslib.daly.DalyBt,
+        jbd=batmon.bmslib.jbd.JbdBt,
+        jk=batmon.bmslib.jikong.JKBt,
+        victron=batmon.bmslib.victron.SmartShuntBt,
+        group_parallel=batmon.bmslib.group.VirtualGroupBms,
         # group_serial=bmslib.group.VirtualGroupBms, # TODO
-        dummy=bmslib.dummy.DummyBt,
+        dummy=batmon.bmslib.dummy.DummyBt,
     )
 
     names = set()
@@ -171,7 +181,7 @@ async def main(user_config):
         names.add(name)
         dev_args[name] = dev
 
-    bms_by_name: Dict[str, bmslib.bt.BtBms] = {
+    bms_by_name: Dict[str, batmon.bmslib.bt.BtBms] = {
         **{
             bms.address: bms for bms in bms_list if not isinstance(bms, VirtualGroupBms)
         },

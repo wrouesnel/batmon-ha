@@ -68,7 +68,6 @@ def load_user_config(config_path: Optional[str]):
                 conf = dotdict(json.load(f))
     else:
         try:
-            logger.info(f"Error reading config path - trying options.json")
             with open(config_path, "rt") as f:
                 conf = dotdict(json.load(f))
         except Exception as e:
