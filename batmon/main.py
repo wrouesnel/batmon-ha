@@ -59,7 +59,7 @@ def store_states(samplers: List[BmsSampler]):
     store_meter_states(meter_states)
 
 
-async def background_loop(timeout: float, sampler_list: List[BmsSampler]):
+async def background_loop(timeout: float, sampler_list: List[BmsSampler], no_store=False):
     global shutdown
 
     t_start = time.time()
@@ -88,17 +88,18 @@ async def background_loop(timeout: float, sampler_list: List[BmsSampler]):
                 shutdown = True
                 break
 
-        if now - t_last_store > 10:
-            t_last_store = now
-            try:
-                store_states(sampler_list)
-            except Exception as e:
-                logger.error("Error starting states: %s", e)
+        if not no_store:
+            if now - t_last_store > 10:
+                t_last_store = now
+                try:
+                    store_states(sampler_list)
+                except Exception as e:
+                    logger.error("Error starting states: %s", e)
 
         await asyncio.sleep(0.1)
 
 
-async def main(user_config):
+async def main(user_config, no_store=False):
     bms_list: List[batmon.bmslib.bt.BtBms] = []
     extra_tasks = []
 
@@ -112,7 +113,7 @@ async def main(user_config):
         except Exception as e:
             logger.warning("Error power cycling BT: %s", e)
 
-    if not user_config.get("skip-discovery", False):
+    if not user_config.get("skip_discovery", False):
         try:
             devices = await batmon.bmslib.bt.bt_discovery(logger)
         except Exception as e:
@@ -241,13 +242,18 @@ async def main(user_config):
 
     from batmon.bmslib.store import load_meter_states
 
-    try:
-        meter_states = load_meter_states()
-    except FileNotFoundError:
-        logger.info("Initialize meter states file")
-        meter_states = {}
-    except Exception as e:
-        logger.warning("Failed to load meter states: %s", e)
+    if not no_store:
+        try:
+            logger.info("Loading saved meter states")
+            meter_states = load_meter_states()
+        except FileNotFoundError:
+            logger.info("Initialize meter states file")
+            meter_states = {}
+        except Exception as e:
+            logger.warning("Failed to load meter states: %s", e)
+            meter_states = {}
+    else:
+        logger.info("Using ephemeral meter states")
         meter_states = {}
 
     sample_period = float(user_config.get("sample_period", 1.0))
@@ -301,7 +307,7 @@ async def main(user_config):
     asyncio.create_task(
         background_loop(
             timeout=max(15 * 60.0, sample_period * 4) if watchdog_en else 0,
-            sampler_list=sampler_list,
+            sampler_list=sampler_list, no_store=no_store
         )
     )
 
@@ -352,7 +358,8 @@ async def main(user_config):
     logger.info("All fetch loops ended. shutdown is already %s", shutdown)
     shutdown = True
 
-    store_states(sampler_list)
+    if not no_store:
+        store_states(sampler_list)
 
     for bms in bms_list:
         try:
@@ -378,6 +385,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("--config-file", type=str, help="Load config file")
 parser.add_argument("--data-dir", type=str, default="/data" if pathlib.Path("/data").exists() else str(pathlib.Path.home()), help="Data directory")
+parser.add_argument("--no-store", action="store_true", help="Disable persisting any data to disk")
 
 def cli(argv: Optional[Sequence[str]] = None):
     """Entrypoint for command line executions"""
@@ -393,7 +401,7 @@ def cli(argv: Optional[Sequence[str]] = None):
     signal.signal(signal.SIGINT, on_exit)
 
     try:
-        asyncio.run(main(user_config))
+        asyncio.run(main(user_config, no_store=args.no_store))
     except Exception as e:
         logger.error("Main loop exception: %s", e)
         logger.error("Stack: %s", traceback.format_exc())
