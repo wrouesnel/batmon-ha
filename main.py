@@ -5,6 +5,7 @@ import signal
 import sys
 import time
 import traceback
+import argparse
 from typing import List, Dict
 
 import paho.mqtt.client as paho
@@ -24,7 +25,6 @@ from bmslib.util import get_logger
 from mqtt_util import mqqt_last_publish_time, mqtt_message_handler, mqtt_process_action_queue
 
 logger = get_logger(verbose=False)
-user_config = load_user_config()
 shutdown = False
 
 
@@ -86,7 +86,7 @@ async def background_loop(timeout: float, sampler_list: List[BmsSampler]):
         await asyncio.sleep(.1)
 
 
-async def main():
+async def main(user_config):
     bms_list: List[bmslib.bt.BtBms] = []
     extra_tasks = []
 
@@ -301,17 +301,31 @@ def on_exit(*args, **kwargs):
     logger.info('exit signal handler... %s, %s, shutdown already %s', args, kwargs, shutdown)
     shutdown = True
 
+parser = argparse.ArgumentParser("batmon", description="Monitor various types of BMS system",
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("--config-file", type=str, help="Load config file")
 
-atexit.register(on_exit)
-# noinspection PyTypeChecker
-signal.signal(signal.SIGTERM, on_exit)
-# noinspection PyTypeChecker
-signal.signal(signal.SIGINT, on_exit)
+def cli(argv):
+    """Entrypoint for command line executions"""
+    args = parser.parse_args(argv)
 
-try:
-    asyncio.run(main())
-except Exception as e:
-    logger.error("Main loop exception: %s", e)
-    logger.error("Stack: %s", traceback.format_exc())
+    user_config = load_user_config(args.config_file)
 
-sys.exit(1)
+    atexit.register(on_exit)
+    # noinspection PyTypeChecker
+    signal.signal(signal.SIGTERM, on_exit)
+    # noinspection PyTypeChecker
+    signal.signal(signal.SIGINT, on_exit)
+
+    try:
+        asyncio.run(main(user_config))
+    except Exception as e:
+        logger.error("Main loop exception: %s", e)
+        logger.error("Stack: %s", traceback.format_exc())
+
+    sys.exit(1)
+
+if __name__ == "__main__":
+    cli(sys.argv[1:])
+
+

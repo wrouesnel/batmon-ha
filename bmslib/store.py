@@ -3,6 +3,7 @@ import re
 from os import access, R_OK
 from os.path import isfile, join
 from threading import Lock
+from typing import Sequence, Optional
 
 from bmslib.util import dotdict, get_logger
 
@@ -49,15 +50,27 @@ def store_algorithm_state(bms_name, algorithm_name, state=None):
             return bms_state['algorithm_state'].get(algorithm_name, None)
 
 
-def load_user_config():
-    try:
-        with open('/data/options.json') as f:
-            conf = dotdict(json.load(f))
-            _user_config_migrate_addresses(conf)
-    except Exception as e:
-        print('error reading /data/options.json, trying options.json', e)
-        with open('options.json') as f:
-            conf = dotdict(json.load(f))
+def load_user_config(config_path: Optional[str]):
+    conf = None
+    if config_path is None:
+        try:
+            with open('/data/options.json', "rt") as f:
+                conf = dotdict(json.load(f))
+                _user_config_migrate_addresses(conf)
+        except Exception as e:
+            logger.info(f"Error reading config path - trying options.json")
+            with open('options.json', "rt") as f:
+                conf = dotdict(json.load(f))
+    else:
+        try:
+            logger.info(f"Error reading config path - trying options.json")
+            with open(config_path, "rt") as f:
+                conf = dotdict(json.load(f))
+        except Exception as e:
+            logger.error(f"Error reading config path: {config_path}")
+
+    if conf is None:
+        raise Exception("Could not load any configuration file")
     return conf
 
 
