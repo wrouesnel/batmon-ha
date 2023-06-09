@@ -257,10 +257,10 @@ class BtBms:
         raise NotImplementedError()
 
     async def subscribe(self, callback: Callable[[BmsSample], None]):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     async def subscribe_voltages(self, callback: Callable[[List[int]], None]):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     async def set_switch(self, switch: str, state: bool):
         """

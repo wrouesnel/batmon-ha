@@ -40,7 +40,7 @@ class JbdBt(BtBms):
             self._buffer.clear()
 
             # print(command, 'buffer endswith w', self._buffer)
-            self._fetch_futures.set_result(command, buf)
+            self._fetch_futures.set_result(comand, buf)
 
     async def connect(self, **kwargs):
         await super().connect(**kwargs)
