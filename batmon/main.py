@@ -113,14 +113,15 @@ async def main(user_config, no_store=False):
         except Exception as e:
             logger.warning("Error power cycling BT: %s", e)
 
+    devices = []
     if not user_config.get("skip_discovery", False):
         try:
             devices = await batmon.bmslib.bt.bt_discovery(logger)
         except Exception as e:
-            devices = []
             logger.error("Error discovering devices: %s", e)
     else:
         logger.info("Skipping discovery phase on user request")
+
 
     def name2addr(name: str):
         return next(
