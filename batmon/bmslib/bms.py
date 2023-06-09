@@ -1,12 +1,12 @@
 import math
 import time
 from copy import copy
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 MIN_VALUE_EXPIRY = 20
 
 
-class DeviceInfo():
+class DeviceInfo:
     def __init__(self, model, hw_version, sw_version, name, sn):
         self.model = model
         self.hw_version = hw_version
@@ -15,23 +15,32 @@ class DeviceInfo():
         self.sn = sn
 
     def __str__(self):
-        s = f'DeviceInfo({self.model},hw-{self.hw_version},sw-{self.sw_version}'
+        s = f"DeviceInfo({self.model},hw-{self.hw_version},sw-{self.sw_version}"
         if self.name:
-            s += ',' + self.name
+            s += "," + self.name
         if self.sn:
-            s += ',#' + self.sn
-        return s + ')'
+            s += ",#" + self.sn
+        return s + ")"
 
 
 class BmsSample:
-    def __init__(self, voltage, current, power=math.nan,
-                 charge=math.nan, capacity=math.nan, cycle_capacity=math.nan,
-                 num_cycles=math.nan, soc=math.nan,
-                 balance_current=math.nan,
-                 temperatures: List[float] = None,
-                 mos_temperature=math.nan,
-                 switches: Optional[Dict[str, bool]] = None,
-                 uptime=math.nan, timestamp=None):
+    def __init__(
+        self,
+        voltage,
+        current,
+        power=math.nan,
+        charge=math.nan,
+        capacity=math.nan,
+        cycle_capacity=math.nan,
+        num_cycles=math.nan,
+        soc=math.nan,
+        balance_current=math.nan,
+        temperatures: List[float] = None,
+        mos_temperature=math.nan,
+        switches: Optional[Dict[str, bool]] = None,
+        uptime=math.nan,
+        timestamp=None,
+    ):
         """
 
         :param voltage:
@@ -46,15 +55,15 @@ class BmsSample:
         :param uptime BMS uptime in seconds
         """
         self.voltage: float = voltage
-        self.current: float = current or 0 # -
-        self._power = power# 0 -> +0
+        self.current: float = current or 0  # -
+        self._power = power  # 0 -> +0
         self.balance_current = balance_current
 
         # infer soc from capacity if soc is nan or type(soc)==int (for higher precision)
         if capacity > 0 and (math.isnan(soc) or (isinstance(soc, int) and charge > 0)):
             soc = round(charge / capacity * 100, 2)
-        elif math.isnan(capacity) and soc > .2:
-                capacity = round(charge / soc * 100)
+        elif math.isnan(capacity) and soc > 0.2:
+            capacity = round(charge / soc * 100)
 
         assert math.isfinite(soc)
 
@@ -70,7 +79,9 @@ class BmsSample:
         self.timestamp = timestamp or time.time()
 
         if switches:
-            assert all(map(lambda x: isinstance(x, bool), switches.values())), "non-bool switches values %s" % switches
+            assert all(map(lambda x: isinstance(x, bool), switches.values())), (
+                "non-bool switches values %s" % switches
+            )
 
     @property
     def power(self):
@@ -81,17 +92,17 @@ class BmsSample:
 
     def __str__(self):
         # noinspection PyStringFormat
-        return 'BmsSampl(%(soc).1f%%,U=%(voltage).1fV,I=%(current).2fA,P=%(power).0fW,q=%(charge).1fAh/%(capacity).0f,mos=%(mos_temperature).1f°C)' % {
-            **self.__dict__,
-            "power": self.power
-        }
+        return (
+            "BmsSampl(%(soc).1f%%,U=%(voltage).1fV,I=%(current).2fA,P=%(power).0fW,q=%(charge).1fAh/%(capacity).0f,mos=%(mos_temperature).1f°C)"
+            % {**self.__dict__, "power": self.power}
+        )
 
     def invert_current(self):
         return self.multiply_current(-1)
 
     def multiply_current(self, x):
         res = copy(self)
-        if res.current != 0: # prevent -0 values
+        if res.current != 0:  # prevent -0 values
             res.current *= x
         if not math.isnan(res._power) and res._power != 0:
             res._power *= x

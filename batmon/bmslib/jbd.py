@@ -14,6 +14,7 @@ https://github.com/tgalarneau/bms
 import asyncio
 
 from batmon.bmslib import FuturesPool
+
 from .bms import BmsSample
 from .bt import BtBms
 
@@ -23,14 +24,14 @@ def _jbd_command(command: int):
 
 
 class JbdBt(BtBms):
-    UUID_RX = '0000ff01-0000-1000-8000-00805f9b34fb'
-    UUID_TX = '0000ff02-0000-1000-8000-00805f9b34fb'
+    UUID_RX = "0000ff01-0000-1000-8000-00805f9b34fb"
+    UUID_TX = "0000ff02-0000-1000-8000-00805f9b34fb"
     TIMEOUT = 16
 
     def __init__(self, address, **kwargs):
         super().__init__(address, **kwargs)
-        if kwargs.get('psk'):
-            self.logger.warning('JBD usually does not use a pairing PIN')
+        if kwargs.get("psk"):
+            self.logger.warning("JBD usually does not use a pairing PIN")
         self._buffer = bytearray()
         self._switches = None
         self._last_response = None
@@ -40,7 +41,7 @@ class JbdBt(BtBms):
         # print("bms msg {0}: {1}".format(sender, data))
         self._buffer += data
 
-        if self._buffer.endswith(b'w'):
+        if self._buffer.endswith(b"w"):
             command = self._buffer[1]
             buf = self._buffer[:]
             self._buffer.clear()
@@ -51,9 +52,9 @@ class JbdBt(BtBms):
 
     async def connect(self, **kwargs):
         await super().connect(**kwargs)
-        #try:
+        # try:
         #    await super().connect(**kwargs)
-        #except Exception as e:
+        # except Exception as e:
         #    self.logger.info("normal connect failed (%s), connecting with scanner", e)
         #    await self._connect_with_scanner(**kwargs)
 
@@ -75,28 +76,26 @@ class JbdBt(BtBms):
         buf = await self._q(cmd=0x03)
         buf = buf[4:]
 
-        num_cell = int.from_bytes(buf[21:22], 'big')
-        num_temp = int.from_bytes(buf[22:23], 'big')
+        num_cell = int.from_bytes(buf[21:22], "big")
+        num_temp = int.from_bytes(buf[22:23], "big")
 
-        mos_byte = int.from_bytes(buf[20:21], 'big')
+        mos_byte = int.from_bytes(buf[20:21], "big")
 
         sample = BmsSample(
-            voltage=int.from_bytes(buf[0:2], byteorder='big', signed=False) / 100,
-            current=-int.from_bytes(buf[2:4], byteorder='big', signed=True) / 100,
-
-            charge=int.from_bytes(buf[4:6], byteorder='big', signed=False) / 100,
-            capacity=int.from_bytes(buf[6:8], byteorder='big', signed=False) / 100,
+            voltage=int.from_bytes(buf[0:2], byteorder="big", signed=False) / 100,
+            current=-int.from_bytes(buf[2:4], byteorder="big", signed=True) / 100,
+            charge=int.from_bytes(buf[4:6], byteorder="big", signed=False) / 100,
+            capacity=int.from_bytes(buf[6:8], byteorder="big", signed=False) / 100,
             soc=buf[19],
-
-            num_cycles=int.from_bytes(buf[8:10], byteorder='big', signed=False),
-
-            temperatures=[(int.from_bytes(buf[23 + i * 2:i * 2 + 25], 'big') - 2731) / 10 for i in range(num_temp)],
-
+            num_cycles=int.from_bytes(buf[8:10], byteorder="big", signed=False),
+            temperatures=[
+                (int.from_bytes(buf[23 + i * 2 : i * 2 + 25], "big") - 2731) / 10
+                for i in range(num_temp)
+            ],
             switches=dict(
                 discharge=mos_byte == 2 or mos_byte == 3,
                 charge=mos_byte == 1 or mos_byte == 3,
             ),
-
             # charge_enabled
             # discharge_enabled
         )
@@ -108,7 +107,7 @@ class JbdBt(BtBms):
         # self.rawdat['P']=round(self.rawdat['Vbat']*self.rawdat['Ibat'], 1)
         # self.rawdat['Bal'] = int.from_bytes(self.response[12:14], byteorder='big', signed=False)
 
-        product_date = int.from_bytes(buf[10:12], byteorder='big', signed=True)
+        product_date = int.from_bytes(buf[10:12], byteorder="big", signed=True)
         # productDate = convertByteToUInt16(data1: data[14], data2: data[15])
 
         return sample
@@ -116,7 +115,9 @@ class JbdBt(BtBms):
     async def fetch_voltages(self):
         buf = await self._q(cmd=0x04)
         num_cell = int(buf[3] / 2)
-        voltages = [(int.from_bytes(buf[4 + i * 2:i * 2 + 6], 'big')) for i in range(num_cell)]
+        voltages = [
+            (int.from_bytes(buf[4 + i * 2 : i * 2 + 6], "big")) for i in range(num_cell)
+        ]
         return voltages
 
     async def set_switch(self, switch: str, state: bool):
@@ -127,12 +128,17 @@ class JbdBt(BtBms):
         #
         def jbd_checksum(cmd, data):
             crc = 0x10000
-            for i in (data + bytes([len(data), cmd])):
+            for i in data + bytes([len(data), cmd]):
                 crc = crc - int(i)
-            return crc.to_bytes(2, byteorder='big')
+            return crc.to_bytes(2, byteorder="big")
 
         def jbd_message(status_bit, cmd, data):
-            return bytes([0xDD, status_bit, cmd, len(data)]) + data + jbd_checksum(cmd, data) + bytes([0x77])
+            return (
+                bytes([0xDD, status_bit, cmd, len(data)])
+                + data
+                + jbd_checksum(cmd, data)
+                + bytes([0x77])
+            )
 
         if not self._switches:
             await self.fetch()
@@ -158,10 +164,10 @@ class JbdBt(BtBms):
 
 async def main():
     # mac_address = 'A3161184-6D54-4B9E-8849-E755F10CEE12'
-    mac_address = 'A4:C1:38:44:48:E7'
+    mac_address = "A4:C1:38:44:48:E7"
     # serial_service = '0000ff00-0000-1000-8000-00805f9b34fb'
 
-    bms = JbdBt(mac_address, name='jbd')
+    bms = JbdBt(mac_address, name="jbd")
     await bms.connect()
     voltages = await bms.fetch_voltages()
     print(voltages)
@@ -170,5 +176,5 @@ async def main():
     await bms.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

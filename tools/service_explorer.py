@@ -9,10 +9,10 @@ Created on 2019-03-25 by hbldh <henrik.blidh@nedomkull.com>
 
 """
 
-import sys
-import platform
 import asyncio
 import logging
+import platform
+import sys
 
 from bleak import BleakClient
 
@@ -23,6 +23,7 @@ ADDRESS = (
     if platform.system() != "Darwin"
     else "F21958DF-E949-4D43-B12B-0020365C428A"
 )
+
 
 async def enumerate_services(client: BleakClient):
     for service in client.services:
@@ -47,18 +48,16 @@ async def enumerate_services(client: BleakClient):
 
             for descriptor in char.descriptors:
                 try:
-                    value = bytes(
-                        await client.read_gatt_descriptor(descriptor.handle)
-                    )
+                    value = bytes(await client.read_gatt_descriptor(descriptor.handle))
                     logger.info(f"\t\t[Descriptor] {descriptor}) | Value: {value}")
                 except Exception as e:
                     logger.error(f"\t\t[Descriptor] {descriptor}) | Value: {e}")
+
 
 async def main(address):
     async with BleakClient(address) as client:
         logger.info(f"Connected: {client.is_connected}")
         await enumerate_services(client)
-
 
 
 if __name__ == "__main__":

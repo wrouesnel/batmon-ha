@@ -4,20 +4,20 @@ import subprocess
 import time
 from typing import Callable, List, Union
 
+import backoff
 from bleak import BleakClient, BleakScanner
 
 from . import FuturesPool
 from .bms import BmsSample, DeviceInfo
 from .util import get_logger
-import backoff
 
 
 @backoff.on_exception(backoff.expo, Exception, max_time=10, logger=None)
 async def bt_discovery(logger):
-    logger.info('BT Discovery:')
+    logger.info("BT Discovery:")
     devices = await BleakScanner.discover()
     if not devices:
-        logger.info(' - no devices found - ')
+        logger.info(" - no devices found - ")
     for d in devices:
         logger.info("BT Device   %s   address=%s", d.name, d.address)
     return devices
@@ -26,10 +26,12 @@ async def bt_discovery(logger):
 def bleak_version():
     try:
         import bleak
+
         return bleak.__version__
     except:
         from importlib.metadata import version
-        return version('bleak')
+
+        return version("bleak")
 
 
 def bt_stack_version():
@@ -39,10 +41,10 @@ def bt_stack_version():
         out, _ = p.communicate()
         s = re.search(b"(\\d+).(\\d+)", out.strip(b"'"))
         bluez_version = tuple(map(int, s.groups()))
-        return 'bluez-v%i.%i' % bluez_version
+        return "bluez-v%i.%i" % bluez_version
     except:
         # get_platform_client_backend_type
-        return '? (%s)' % BleakClient.__name__
+        return "? (%s)" % BleakClient.__name__
 
 
 def bt_power(on):
@@ -50,11 +52,19 @@ def bt_power(on):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     out, err = p.communicate()
     if p.returncode != 0:
-        raise Exception('error with cmd %s: %s' % (cmd, bytes.decode(err, 'utf-8')))
+        raise Exception("error with cmd %s: %s" % (cmd, bytes.decode(err, "utf-8")))
 
 
-class BtBms():
-    def __init__(self, address: str, name: str, keep_alive=False, psk=None, adapter=None, verbose_log=False):
+class BtBms:
+    def __init__(
+        self,
+        address: str,
+        name: str,
+        keep_alive=False,
+        psk=None,
+        adapter=None,
+        verbose_log=False,
+    ):
         self.address = address
         self.name = name
         self.keep_alive = keep_alive
@@ -64,9 +74,12 @@ class BtBms():
         self._psk = psk
         self._connect_time = 0
 
-        if address.startswith('test_'):
+        if address.startswith("test_"):
             from batmon.bmslib.dummy import BleakDummyClient
-            self.client = BleakDummyClient(address, disconnected_callback=self._on_disconnect)
+
+            self.client = BleakDummyClient(
+                address, disconnected_callback=self._on_disconnect
+            )
         else:
             kwargs = {}
             if psk:
@@ -76,19 +89,23 @@ class BtBms():
                     self.logger.warn(
                         "Installed bleak version %s has no pairing agent, pairing with a pin will likely fail! "
                         "Disable `install_newer_bleak` option or run `pip3 -r requirements.txt`",
-                        bleak_version())
+                        bleak_version(),
+                    )
 
             self._adapter = adapter
             if adapter:  # hci0, hci1 (BT adapter hardware)
-                kwargs['adapter'] = adapter
+                kwargs["adapter"] = adapter
 
-            self.client = BleakClient(address,
-                                      handle_pairing=bool(psk),
-                                      disconnected_callback=self._on_disconnect,
-                                      **kwargs
-                                      )
+            self.client = BleakClient(
+                address,
+                handle_pairing=bool(psk),
+                disconnected_callback=self._on_disconnect,
+                **kwargs,
+            )
 
-    async def start_notify(self, char_specifier, callback: Callable[[int, bytearray], None], **kwargs):
+    async def start_notify(
+        self, char_specifier, callback: Callable[[int, bytearray], None], **kwargs
+    ):
         if not isinstance(char_specifier, list):
             char_specifier = [char_specifier]
         exception = None
@@ -101,7 +118,9 @@ class BtBms():
         await enumerate_services(self.client, self.logger)
         raise exception
 
-    def characteristic_uuid_to_handle(self, uuid: str, property: str) -> Union[str, int]:
+    def characteristic_uuid_to_handle(
+        self, uuid: str, property: str
+    ) -> Union[str, int]:
         for service in self.client.services:
             for char in service.characteristics:
                 if char.uuid == uuid and property in char.properties:
@@ -110,12 +129,16 @@ class BtBms():
 
     def _on_disconnect(self, client):
         if self.keep_alive and self._connect_time:
-            self.logger.warning('BMS %s disconnected after %.1fs!', self.__str__(), time.time() - self._connect_time)
+            self.logger.warning(
+                "BMS %s disconnected after %.1fs!",
+                self.__str__(),
+                time.time() - self._connect_time,
+            )
 
         try:
             self._fetch_futures.clear()
         except Exception as e:
-            self.logger.warning('error clearing futures pool: %s', str(e) or type(e))
+            self.logger.warning("error clearing futures pool: %s", str(e) or type(e))
 
     async def _connect_client(self, timeout):
         await self.client.connect(timeout=timeout)
@@ -123,16 +146,21 @@ class BtBms():
             await enumerate_services(self.client, logger=self.logger)
         self._connect_time = time.time()
         if self._psk:
+
             def get_passkey(device: str, pin, passkey):
                 if pin:
                     self.logger.info(f"Device {device} is displaying pin '{pin}'")
                     return True
 
                 if passkey:
-                    self.logger.info(f"Device {device} is displaying passkey '{passkey:06d}'")
+                    self.logger.info(
+                        f"Device {device} is displaying passkey '{passkey:06d}'"
+                    )
                     return True
 
-                self.logger.info(f"Device {device} asking for psk, giving '{self._psk}'")
+                self.logger.info(
+                    f"Device {device} asking for psk, giving '{self._psk}'"
+                )
                 return str(self._psk) or None
 
             self.logger.debug("Pairing %s using psk '%s'...", self._psk)
@@ -161,9 +189,10 @@ class BtBms():
         :return:
         """
         import bleak
+
         scanner_kw = {}
         if self._adapter:
-            scanner_kw['adapter'] = self._adapter
+            scanner_kw["adapter"] = self._adapter
         scanner = bleak.BleakScanner(**scanner_kw)
         self.logger.debug("starting scan")
         await scanner.start()
@@ -173,8 +202,10 @@ class BtBms():
             try:
                 discovered = set(b.address for b in scanner.discovered_devices)
                 if self.client.address not in discovered:
-                    raise Exception('Device %s not discovered. Make sure it in range and is not being controled by '
-                                    'another application. (%s)' % (self.client.address, discovered))
+                    raise Exception(
+                        "Device %s not discovered. Make sure it in range and is not being controled by "
+                        "another application. (%s)" % (self.client.address, discovered)
+                    )
 
                 self.logger.debug("connect attempt %d", attempt)
                 await self._connect_client(timeout=timeout / 2)
@@ -182,8 +213,8 @@ class BtBms():
             except Exception as e:
                 await self.client.disconnect()
                 if attempt < 8:
-                    self.logger.debug('retry %d after error %s', attempt, e)
-                    await asyncio.sleep(0.2 * (1.5 ** attempt))
+                    self.logger.debug("retry %d after error %s", attempt, e)
+                    await asyncio.sleep(0.2 * (1.5**attempt))
                     attempt += 1
                 else:
                     await scanner.stop()
@@ -241,7 +272,7 @@ class BtBms():
         raise NotImplementedError()
 
     def __str__(self):
-        return f'{self.__class__.__name__}({self.client.address})'
+        return f"{self.__class__.__name__}({self.client.address})"
 
     async def __aenter__(self):
         # print("enter")
@@ -291,9 +322,7 @@ async def enumerate_services(client: BleakClient, logger):
 
             for descriptor in char.descriptors:
                 try:
-                    value = bytes(
-                        await client.read_gatt_descriptor(descriptor.handle)
-                    )
+                    value = bytes(await client.read_gatt_descriptor(descriptor.handle))
                     logger.info(f"\t\t[Descriptor] {descriptor}) | Value: {value}")
                 except Exception as e:
                     logger.error(f"\t\t[Descriptor] {descriptor}) | Value: {e}")

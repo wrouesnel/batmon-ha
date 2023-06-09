@@ -21,8 +21,8 @@ class DalyBt(BtBms):
     TIMEOUT = 8
 
     def __init__(self, address, **kwargs):
-        if kwargs.get('psk'):
-            self.logger.warning('JBD usually does not use a pairing PIN')
+        if kwargs.get("psk"):
+            self.logger.warning("JBD usually does not use a pairing PIN")
         super().__init__(address, **kwargs)
         self.UUID_RX = None
         self.UUID_TX = None
@@ -34,17 +34,17 @@ class DalyBt(BtBms):
     async def get_states_cached(self, key):
         if not self._states:
             self._states = await self.fetch_states()
-            self.logger.info('got daly states: %s', self._states)
+            self.logger.info("got daly states: %s", self._states)
         return self._states.get(key)
 
     def _notification_callback(self, sender, data):
         RESP_LEN = 13
 
         # split responses into chunks with length RESP_LEN
-        responses = [data[i:i + RESP_LEN] for i in range(0, len(data), RESP_LEN)]
+        responses = [data[i : i + RESP_LEN] for i in range(0, len(data), RESP_LEN)]
 
         for response_bytes in responses:
-            self.logger.debug('daly resp: %s', response_bytes)
+            self.logger.debug("daly resp: %s", response_bytes)
 
             command = response_bytes[2]
             response_bytes = response_bytes[4:-1]
@@ -70,13 +70,22 @@ class DalyBt(BtBms):
         try:
             await super().connect(timeout=timeout)
         except Exception as e:
-            self.logger.info("normal connect failed (%s), connecting with scanner", str(e) or type(e))
+            self.logger.info(
+                "normal connect failed (%s), connecting with scanner", str(e) or type(e)
+            )
             await self._connect_with_scanner(timeout=timeout)
 
         CHARACTERISTIC_UUIDS = [
-            (17, 15, 48),  # TODO these should be replaced with the actual UUIDs to avoid conflicts with other BMS
-            ('0000fff1-0000-1000-8000-00805f9b34fb', '0000fff2-0000-1000-8000-00805f9b34fb',
-             '02f00000-0000-0000-0000-00000000ff01'),  # (15,19,31)
+            (
+                17,
+                15,
+                48,
+            ),  # TODO these should be replaced with the actual UUIDs to avoid conflicts with other BMS
+            (
+                "0000fff1-0000-1000-8000-00805f9b34fb",
+                "0000fff2-0000-1000-8000-00805f9b34fb",
+                "02f00000-0000-0000-0000-00000000ff01",
+            ),  # (15,19,31)
         ]
 
         for rx, tx, sx in CHARACTERISTIC_UUIDS:
@@ -85,7 +94,9 @@ class DalyBt(BtBms):
                 await self.client.write_gatt_char(sx, bytearray(b""))
                 self.UUID_RX = rx
                 self.UUID_TX = tx
-                self.logger.info("found rx uuid to be working: %s (tx %s, sx %s)", rx, tx, sx)
+                self.logger.info(
+                    "found rx uuid to be working: %s (tx %s, sx %s)", rx, tx, sx
+                )
                 break
             except Exception as e:
                 self.logger.warning("tried rx/tx/sx uuids %s/%s/%s: %s", rx, tx, sx, e)
@@ -115,7 +126,9 @@ class DalyBt(BtBms):
             except TimeoutError:
                 n_recv = num_responses - self._fetch_nr[command].count(None)
                 raise TimeoutError(
-                    "timeout awaiting result %02x, got %d/%d responses" % (command, n_recv, num_responses))
+                    "timeout awaiting result %02x, got %d/%d responses"
+                    % (command, n_recv, num_responses)
+                )
 
             return sample
 
@@ -126,19 +139,21 @@ class DalyBt(BtBms):
 
     async def fetch(self) -> BmsSample:
         status = await self._fetch_status()
-        sample = await self.fetch_soc(sample_kwargs=dict(
-            charge=status['capacity_ah'],
-            switches=dict(
-                charge=bool(status['charging_mosfet']),
-                discharge=bool(status['discharging_mosfet'])
-            ),
-        ))
+        sample = await self.fetch_soc(
+            sample_kwargs=dict(
+                charge=status["capacity_ah"],
+                switches=dict(
+                    charge=bool(status["charging_mosfet"]),
+                    discharge=bool(status["discharging_mosfet"]),
+                ),
+            )
+        )
         return sample
 
     async def fetch_soc(self, sample_kwargs=None):
         resp = await self._q(0x90)
 
-        parts = struct.unpack('>h h h h', resp)
+        parts = struct.unpack(">h h h h", resp)
 
         # x_v =  parts[1] / 10,  # always 0 "x_voltage", acquisition
 
@@ -146,7 +161,7 @@ class DalyBt(BtBms):
             voltage=parts[0] / 10,
             current=(parts[2] - 30000) / 10,  # negative=charging, positive=discharging
             soc=parts[3] / 10,
-            num_cycles=await self.get_states_cached('num_cycles'),
+            num_cycles=await self.get_states_cached("num_cycles"),
             **sample_kwargs,
         )
         return sample
@@ -154,7 +169,7 @@ class DalyBt(BtBms):
     async def _fetch_status(self):
         response_data = await self._q(0x93)
 
-        parts = struct.unpack('>b ? ? B l', response_data)
+        parts = struct.unpack(">b ? ? B l", response_data)
 
         if parts[0] == 0:
             mode = "stationary"
@@ -175,7 +190,7 @@ class DalyBt(BtBms):
 
         response_data = await self._q(0x94)
 
-        parts = struct.unpack('>b b ? ? b h x', response_data)
+        parts = struct.unpack(">b b ? ? b h x", response_data)
 
         state_bits = bin(parts[4])[2:]
         state_names = ["DI1", "DI2", "DI3", "DI4", "DO1", "DO2", "DO3", "DO4"]
@@ -198,10 +213,12 @@ class DalyBt(BtBms):
 
     async def fetch_voltages(self, num_cells=0):
         if not num_cells:
-            num_cells = await self.get_states_cached('num_cells')
-            assert isinstance(num_cells, int) and 0 < num_cells <= 32, "num_cells %s outside range" % num_cells
+            num_cells = await self.get_states_cached("num_cells")
+            assert isinstance(num_cells, int) and 0 < num_cells <= 32, (
+                "num_cells %s outside range" % num_cells
+            )
 
-        num_resp = round(num_cells / 3 + .5)  # bms sends tuples of 3 (ceil)
+        num_resp = round(num_cells / 3 + 0.5)  # bms sends tuples of 3 (ceil)
         resp = await self._q(0x95, num_responses=num_resp)
         voltages = []
         for i in range(num_resp):
@@ -212,11 +229,13 @@ class DalyBt(BtBms):
 
     async def fetch_temperatures(self, num_sensors=0):
         if not num_sensors:
-            num_sensors = await self.get_states_cached('num_temps')
-            assert isinstance(num_sensors, int) and 0 < num_sensors <= 32, "num_sensors %s outside range" % num_sensors
+            num_sensors = await self.get_states_cached("num_temps")
+            assert isinstance(num_sensors, int) and 0 < num_sensors <= 32, (
+                "num_sensors %s outside range" % num_sensors
+            )
 
         temperatures = []
-        n_resp = round(num_sensors / 7 + .5)  # bms sends tuples of 7 (ceil)
+        n_resp = round(num_sensors / 7 + 0.5)  # bms sends tuples of 7 (ceil)
         resp = await self._q(0x96, num_responses=n_resp)
         if n_resp == 1:
             resp = [resp]
@@ -249,7 +268,7 @@ class DalyBt(BtBms):
 
 
 async def main():
-    mac_address = '3D7394B1-BCFD-4CDC-A10D-3D113E2317A6'  # daly osx
+    mac_address = "3D7394B1-BCFD-4CDC-A10D-3D113E2317A6"  # daly osx
     # mac_address = ''
 
     bms = DalyBt(mac_address)
@@ -259,5 +278,5 @@ async def main():
     await bms.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())

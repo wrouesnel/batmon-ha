@@ -1,15 +1,17 @@
-from . import *
-
 import asyncio
-from typing import Dict, Union, Tuple
+from typing import Dict, Tuple, Union
+
+from . import *
 
 # NameType = Union[str, Tuple[str]]
 NameType = Union[str, int, Tuple[Union[str, int]]]
+
 
 class FuturesPool:
     """
     Manage a collection of named futures.
     """
+
     def __init__(self):
         self._futures: Dict[str, asyncio.Future] = {}
 
@@ -27,7 +29,7 @@ class FuturesPool:
         fut = self._futures.get(name, None)
         if fut:
             if fut.done():
-                # silently remove done future 
+                # silently remove done future
                 self.remove(name)
             else:
                 fut.set_result(value)
