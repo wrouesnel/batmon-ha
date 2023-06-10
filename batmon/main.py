@@ -52,11 +52,12 @@ async def fetch_loop(fn, period, max_errors):
     logger.info("fetch_loop %s ends", fn)
 
 
-def store_states(samplers: List[BmsSampler]):
+def store_states(samplers: List[BmsSampler], no_store=False):
     meter_states = {s.bms.name: s.get_meter_state() for s in samplers}
     from batmon.bmslib.store import store_meter_states
 
-    store_meter_states(meter_states)
+    if not no_store:
+        store_meter_states(meter_states)
 
 
 async def background_loop(timeout: float, sampler_list: List[BmsSampler], no_store=False):
@@ -88,13 +89,12 @@ async def background_loop(timeout: float, sampler_list: List[BmsSampler], no_sto
                 shutdown = True
                 break
 
-        if not no_store:
-            if now - t_last_store > 10:
-                t_last_store = now
-                try:
-                    store_states(sampler_list)
-                except Exception as e:
-                    logger.error("Error starting states: %s", e)
+        if now - t_last_store > 10:
+            t_last_store = now
+            try:
+                store_states(sampler_list, no_store=no_store)
+            except Exception as e:
+                logger.error("Error starting states: %s", e)
 
         await asyncio.sleep(0.1)
 
@@ -359,8 +359,8 @@ async def main(user_config, no_store=False):
     logger.info("All fetch loops ended. shutdown is already %s", shutdown)
     shutdown = True
 
-    if not no_store:
-        store_states(sampler_list)
+
+    store_states(sampler_list, no_store=no_store)
 
     for bms in bms_list:
         try:
